@@ -75,18 +75,8 @@ def coord_colors(coords):
 
     return colors
 
-
-# def hash_to_color(name):
-    name_hash = hashlib.sha256(name.encode()).hexdigest()
-    name_num = int(name_hash, 16) / float(1 << 256)
-
-    return [int(255*name_num), 
-            int(255*(1-name_num)), 
-            (255-int(255*name_num)-int(255*(1-name_num))), 
-            255]
-
 text0MD = '<p align="center" style="color:lightblue; font-size:30px;">Atualizar os dados das cidades?</p>'
-text1MD = '<p align="center" style="color:green; font-size:40px;">Dados Atualizados!</p>'
+text1MD = '<p align="center" style="color:lightgreen; font-size:20px;">Dados Atualizados!</p>'
 
 df_sheets = pd.ExcelFile('DCM.xlsm')
 df_coordenadores = pd.read_excel(df_sheets, 'Coordenador')
@@ -97,34 +87,18 @@ cidadeUF = (df_coordenadores_cidades['CidadeNormalizada'].astype(str) +
             df_coordenadores_cidades['Estado'].astype(str)
 )
 
-title_question = st.empty()
-upt_dados = st.empty()
-upt_status = st.empty
+title_question = st.sidebar
 
 with title_question:
-    st.markdown(text0MD, unsafe_allow_html=True)
+    # st.markdown(text0MD, unsafe_allow_html=True)
     # UPDATE CITIES LAT LON AND FORMAT CITY NAMES
+    updateData = title_question.button('Atualizar os dados das cidades')
+    if updateData:
+        update_latlonjson()
+        # title_question.markdown(text1MD, unsafe_allow_html=True)
+        # t.sleep(3)
 
-    with upt_dados:
-        
-        c0, c1, c2, c3, c4 = st.columns(5)
-        with c1:
-            sim = st.button('Sim')
-        with c4:
-            nao = st.button('Não')
-        if sim:
-            title_question.empty()
-            update_latlonjson()
-            title_question.empty()
-            title_question.markdown(text1MD, unsafe_allow_html=True)
-            t.sleep(3)
-            title_question.empty()
-
-        if nao:
-            title_question.empty()
-            upt_dados.empty()
             
-
 # update_latlonjson()
 
 with open('latlonCidades.json', 'r') as of:
@@ -155,16 +129,21 @@ st.title('Dinamica Merchandising')
 
 col1, col2 = st.columns([1.5, 2])
 
-with st.container():
+
+coorData = st.container()
+with coorData:
     st.subheader("Dados dos Coordenadores")
     st.table(df_coordenadores)
 
-with st.container():
+
+coordCityData = st.container()
+with coordCityData:
     st.subheader("Coordenadores e Cidades")
-    df_coor_cid = df_coordenadores_cidades.drop(labels='Cidade', axis=1)
+    df_coor_cid = df_coordenadores_cidades.drop(labels=['Cidade'], axis=1)
     df_coor_cid.rename(columns={"CidadeNormalizada": "Cidade"}, inplace=True)
+    df_coor_cid_PLOT = df_coor_cid.drop(labels=['LAT', 'LON'], axis=1)
     # HIDDING TABLES #
-    # st.table(df_coor_cid)
+    st.table(df_coor_cid_PLOT)
     # st.write(df_coor_cid.value_counts(['Coordenador']))
     # st.write(cidadeUF)
     numCoord = df_coor_cid['Coordenador'].nunique()
@@ -172,26 +151,13 @@ with st.container():
     coordcol = coord_colors(coords)
     df_coor_cid['color'] = df_coor_cid['Coordenador'].map(coordcol)
     df_coor_cid = df_coor_cid.dropna()
-    st.write(df_coor_cid)
+    
+    
+mapsG = st.container()
 
-    
-    map = px.scatter_mapbox(df_coor_cid,
-                        lat = 'LAT',
-                        lon = 'LON',
-                        hover_name = 'Coordenador',
-                        zoom = 3
-                    )
-    
-    hmap = px.density_mapbox(df_coor_cid,
-                        lat = 'LAT',
-                        lon = 'LON',
-                        z = 'Coordenador',
-                        radius = 20,
-                        center = dict(lat=0, lon=180),
-                        zoom = 3,
-                        mapbox_style = "stamen-terrain"
-                    )
-    
+with mapsG:
+    st.subheader("Coordenadores e Cidades")
+
     st.markdown("### Legenda")
     for coordenador, cor in coordcol.items():
         cor_rgb = 'rgba({},{},{},{})'.format(*cor)
@@ -212,12 +178,4 @@ with st.container():
 
     st.pydeck_chart(pydeckD)
     
-    map.update_layout(mapbox_style="open-street-map")
-    map.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-    
-    st.plotly_chart(map)
-    st.plotly_chart(hmap)
 
-with st.container():
-    st.subheader("Coordenadores e Cidades")
-    
