@@ -28,6 +28,8 @@ color_palette = [
         [0, 0, 128, 255],      # Azul marinho
     ]
 
+coord_color_mapping = {}
+
 def remove_tail(string):
     return string[:-8]
 
@@ -61,11 +63,18 @@ def update_latlonjson():
 
     format()
 
+def assign_coord_color(coordenador):
+    if coordenador not in coord_color_mapping:
+        cor = color_palette[len(coord_color_mapping) % len(color_palette)]
+        coord_color_mapping[coordenador] = cor
+
+    return coord_color_mapping[coordenador]
+
 def coord_colors(coords):
     colors = {}
 
-    for i, c in enumerate(coords):
-        colors[c] = color_palette[i % len(color_palette)]
+    for c in coords:
+        colors[c] = assign_coord_color(c)
 
     return colors
 
@@ -150,7 +159,7 @@ with col1:
 with col2:
     df_coor_cid_Filtrado = df_coor_cid_Filtrado.dropna()
     numCoord = df_coor_cid_Filtrado['Coordenador'].nunique()
-    coords = df_coor_cid_Filtrado['Coordenador'].unique()
+    coords = df_coor_cid['Coordenador'].unique()
     coordcol = coord_colors(coords)
     df_coor_cid_Filtrado['color'] = df_coor_cid_Filtrado['Coordenador'].map(coordcol)
     
@@ -167,7 +176,8 @@ with col2:
         else:
             with col3:
                 st.markdown("### Legenda")
-                for coordenador, cor in coordcol.items():
+                for coordenador in coordenadoresFiltro:
+                    cor = coordcol[coordenador]
                     cor_rgb = 'rgba({},{},{},{})'.format(*cor)
                     st.markdown(f"<div style='display: inline-block; height: 24px; width: 24px; background-color: {cor_rgb}'></div> {coordenador}", unsafe_allow_html=True)
 
@@ -186,8 +196,4 @@ with col2:
 
             st.pydeck_chart(pydeckD)
 
-
-    # with col1:
-    #     st.write(df_coor_cid)
-    #     st.write(df_coor_cid_Filtrado.dropna())
 
