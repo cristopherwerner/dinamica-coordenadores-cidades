@@ -5,6 +5,8 @@ import pydeck as pdk
 import streamlit as st
 from unidecode import unidecode
 
+st.set_page_config(initial_sidebar_state='collapsed', layout='wide')
+
 color_palette = [
         [230, 25, 75, 255],    # Vermelho
         [60, 180, 75, 255],    # Verde
@@ -119,55 +121,73 @@ for i, row in df_coordenadores_cidades.iterrows():
 
 st.title('Dinamica Merchandising')
 
-col1, col2 = st.columns([1.5, 2])
+col1, col2, col3 = st.columns([10, 10, 3])
 
-
-coorData = st.container()
-with coorData:
-    st.subheader("Dados dos Coordenadores")
-    st.table(df_coordenadores)
-
-
-coordCityData = st.container()
-with coordCityData:
-    st.subheader("Coordenadores e Cidades")
+# TABELAS
+with col1:
     df_coor_cid = df_coordenadores_cidades.drop(labels=['Cidade'], axis=1)
     df_coor_cid.rename(columns={"CidadeNormalizada": "Cidade"}, inplace=True)
-    df_coor_cid_PLOT = df_coor_cid.drop(labels=['LAT', 'LON'], axis=1)
+    coordenadoresDistinct = df_coor_cid['Coordenador'].unique()
+    coordenadoresFiltro = title_question.multiselect('Coordenadores', coordenadoresDistinct, coordenadoresDistinct)
+    df_coordenadores_Filtrado = df_coordenadores[df_coordenadores['Coordenador'].isin(coordenadoresFiltro)]
+    df_coor_cid_Filtrado = df_coor_cid[df_coor_cid['Coordenador'].isin(coordenadoresFiltro)]
+    df_coor_cid_PLOT = df_coor_cid_Filtrado.drop(labels=['LAT', 'LON'], axis=1)
+    # df_coor_cid_PLOT_Filtrado = df_coor_cid_PLOT[df_coor_cid_PLOT['Coordenador']==coordenadoresFiltro]
+    coorData = st.container()
+    with coorData:
+        st.subheader("Dados dos Coordenadores")
+        st.table(df_coordenadores_Filtrado)
+    coordCityData = st.container()
+    with coordCityData:
+        st.subheader("Coordenadores e Cidades")
+   
     # HIDDING TABLES #
     st.table(df_coor_cid_PLOT)
     # st.write(df_coor_cid.value_counts(['Coordenador']))
     # st.write(cidadeUF)
-    numCoord = df_coor_cid['Coordenador'].nunique()
-    coords = df_coor_cid['Coordenador'].unique()
+
+# MAPAS
+with col2:
+    df_coor_cid_Filtrado = df_coor_cid_Filtrado.dropna()
+    numCoord = df_coor_cid_Filtrado['Coordenador'].nunique()
+    coords = df_coor_cid_Filtrado['Coordenador'].unique()
     coordcol = coord_colors(coords)
-    df_coor_cid['color'] = df_coor_cid['Coordenador'].map(coordcol)
-    df_coor_cid = df_coor_cid.dropna()
+    df_coor_cid_Filtrado['color'] = df_coor_cid_Filtrado['Coordenador'].map(coordcol)
     
     
-mapsG = st.container()
 
-with mapsG:
-    st.subheader("Coordenadores e Cidades")
+    mapsG = st.container()
 
-    st.markdown("### Legenda")
-    for coordenador, cor in coordcol.items():
-        cor_rgb = 'rgba({},{},{},{})'.format(*cor)
-        st.markdown(f"<div style='display: inline-block; height: 24px; width: 24px; background-color: {cor_rgb}'></div> {coordenador}", unsafe_allow_html=True)
+    with mapsG:
+        st.subheader("Coordenadores e Cidades")
+
+        # LEGENDAS
+        if df_coor_cid_Filtrado.empty:
+            st.warning('Nenhum coordenador selecionado no filtro!')
+        else:
+            with col3:
+                st.markdown("### Legenda")
+                for coordenador, cor in coordcol.items():
+                    cor_rgb = 'rgba({},{},{},{})'.format(*cor)
+                    st.markdown(f"<div style='display: inline-block; height: 24px; width: 24px; background-color: {cor_rgb}'></div> {coordenador}", unsafe_allow_html=True)
+
+                
+                layer = pdk.Layer(
+                    "ScatterplotLayer",
+                    data = df_coor_cid_Filtrado,
+                    get_position = ['LON', 'LAT'],
+                    get_fill_color = 'color',
+                    get_radius = 5000,
+                )
+
+            view_state = pdk.ViewState(latitude=df_coor_cid_Filtrado['LAT'].mean(), longitude=df_coor_cid_Filtrado['LON'].mean(), zoom=6)
+
+            pydeckD = pdk.Deck(layers=[layer], initial_view_state=view_state)
+
+            st.pydeck_chart(pydeckD)
 
 
-    layer = pdk.Layer(
-        "ScatterplotLayer",
-        data = df_coor_cid,
-        get_position = ['LON', 'LAT'],
-        get_fill_color = 'color',
-        get_radius = 5000,
-    )
-
-    view_state = pdk.ViewState(latitude=df_coor_cid['LAT'].mean(), longitude=df_coor_cid['LON'].mean(), zoom=6)
-
-    pydeckD = pdk.Deck(layers=[layer], initial_view_state=view_state)
-
-    st.pydeck_chart(pydeckD)
-    
+    # with col1:
+    #     st.write(df_coor_cid)
+    #     st.write(df_coor_cid_Filtrado.dropna())
 
